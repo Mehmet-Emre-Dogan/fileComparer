@@ -1,4 +1,3 @@
-
 import subprocess
 import os
 from os.path import isdir
@@ -16,6 +15,11 @@ import ctypes
 isRunnable = False
 myDict = {}
 ctypes.windll.kernel32.SetConsoleTitleW("List same files - console")
+
+# make console maximized
+consoleWindow = ctypes.windll.kernel32.GetConsoleWindow()
+SW_MAXIMIZE = 3
+ctypes.windll.user32.ShowWindow(consoleWindow, SW_MAXIMIZE)
 
 def convert(seconds): 
     hour = seconds // 3600
@@ -64,7 +68,8 @@ class BGworker(QThread):
             self.sig3.emit("Calculating hashes")
             self.sig1.emit(f"{i+1}/{numFiles}")
             if isdir(".\\" + fileName):
-                print(" [directory]", end="")
+                #print(" [directory]", end="") if you prefer printing this info, uncomment
+                pass
             else:
                 pShell1 = subprocess.Popen(['powershell.exe', f'$hashVar = Get-FileHash ".\\{fileName}" -Algorithm SHA384\n\r $hashVar.hash'], stdout=subprocess.PIPE)
                 hash = pShell1.stdout.read().strip()
@@ -144,12 +149,16 @@ class myWindow(QtWidgets.QMainWindow):
 
         if(self.ui.progressBar.value() != self.ui.progressBar.maximum()):
             self.calcRemaining(self.calcElapsed())
-        elif not self.msgRan:
-            self.msgFinished()
             
     def sig2Received(self, val):
         self.ui.progressBar.setMaximum(self.pbMax)
         self.ui.progressBar.setValue(self.pbWhereIAm)
+        if (not self.msgRan) and ( self.ui.progressBar.value() == self.ui.progressBar.maximum() ):
+            self.ui.btnStart.setEnabled(False)
+            self.ui.btnPause.setEnabled(False)
+            self.msgRan = True
+            self.msgFinished()
+            
 
     def sig3Received(self, val):
         self.ui.label_2.setText(val)
@@ -179,13 +188,15 @@ class myWindow(QtWidgets.QMainWindow):
         msg = QMessageBox()
         msg.setWindowTitle("Finished")
         msg.setWindowIcon(QtGui.QIcon('img.png'))
-        msg.setText("Please see console output")
-        msg.setIcon(QMessageBox.Warning)
+        msg.setText("Please see console output for results")
+        msg.setIcon(QMessageBox.Information)
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
-        self.msgRan = True
-    
-    
+        if msg.clickedButton:
+            self.showMinimized()
+             
+
+
 def app():
     app = QtWidgets.QApplication(sys.argv)
     win = myWindow()
